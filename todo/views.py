@@ -276,12 +276,14 @@ def deleteTodoItem(request, list_id, item_id):
             return HttpResponseForbidden()
 
         todo = TodoItem.objects.get(pk=item_id)
+
+        json_data = todo.to_json()
         todo.delete()
 
         # If the request was accepted and successfully processed, broadcast a 
         # 'list-removed' message on the pusher channel for this list
         channel_name = 'presence-todoList' + list_id
-        p[channel_name].trigger('item-removed', todo.to_json())
+        p[channel_name].trigger('item-removed', json_data)
 
     except TodoItem.DoesNotExist, TodoList.DoesNotExist:
         return HttpResponseNotFound()    
