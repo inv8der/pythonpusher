@@ -28,10 +28,10 @@
                 + '</li>';
 
             $('#todo-list').append(html);
-            $('.todo-item button.destroy').on('click', removeTodo);
-            $('.todo-item input.edit').on('change', editTodo);
-            $('.todo-item label').on('dblclick', showEditView);
-            $('.todo-item input.toggle').on('click', toggleComplete);
+            $('#todo-item-'+todo.id+' button.destroy').on('click', removeTodo);
+            $('#todo-item-'+todo.id+' input.edit').on('change', editTodo);
+            $('#todo-item-'+todo.id+' label').on('dblclick', showEditView);
+            $('#todo-item-'+todo.id+' input.toggle').on('click', toggleComplete);
         });
 
         channel.bind('item-removed', function(data) {
