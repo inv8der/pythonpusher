@@ -1,0 +1,223 @@
+<!doctype html>
+<html>
+<head>
+    <title>PythonPusher • Todo</title>
+    {% load staticfiles %}
+    <link rel="stylesheet" href="{% static 'todo/list.css' %}">
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="//js.pusher.com/2.2/pusher.min.js" ></script>
+    <script type="text/javascript" src="//epeli.github.io/underscore.string/dist/underscore.string.min.js"></script>
+    <script type="text/javascript">
+        var pusher = new Pusher('{{app_key}}', { 
+            authEndpoint: '/todo/pusher/auth/',
+            auth: {
+                params: {
+                    csrfmiddlewaretoken: '{{csrf_token}}'
+                }
+            }
+        });
+        var channel = pusher.subscribe('presence-todoList{{todo_list.id}}');
+
+        channel.bind('item-added', function(data) {
+            todo = JSON.parse(data);
+            var html = ''
+                + '<li id="todo-item-'+todo.id+'" data-id="'+todo.id+'" class="todo-item '+((todo.is_completed)?'completed':'')+'">'
+                    + '<input type="checkbox"'+ ((todo.is_completed)?'checked':'') + ' class="toggle" />'
+                    + '<label>'+todo.title+'</label><button class="destroy"></button>'
+                    + '<input type="text" class="edit hidden" />'
+                + '</li>';
+
+            $('#todo-list').append(html);
+            $('.todo-item button.destroy').on('click', removeTodo);
+            $('.todo-item input.edit').on('change', editTodo);
+            $('.todo-item label').on('dblclick', showEditView);
+            $('.todo-item input.toggle').on('click', toggleComplete);
+        });
+
+        channel.bind('item-removed', function(data) {
+            var todo = JSON.parse(data);
+            $('#todo-item-'+todo.id).remove()
+        });
+
+        channel.bind('item-updated', function(data) {
+            var todo = JSON.parse(data);
+            var $todo = $('#todo-item-'+todo.id);
+
+            if (todo.is_completed) {
+                $todo.find('.toggle').attr('checked', true);
+                $todo.addClass('completed');
+            } 
+            else {
+                $todo.find('.toggle').attr('checked', false);
+                $todo.removeClass('completed');
+            }
+
+            $todo.find('label').text(todo.title);
+        });
+
+        function createTodo(event) {
+            var title = $(this).val();
+
+            $.ajax({
+                method: 'POST',
+                url: '/todo/list/{{todo_list.id}}/item/',
+                data: {
+                    title: title,
+                    is_completed: false,
+                    csrfmiddlewaretoken: '{{csrf_token}}'
+                },
+                headers: {
+                    'X-CSRFToken': '{{csrf_token}}'
+                },
+                success: function() { console.log('yay!'); },
+                error: function() { console.log('boo!'); }
+            });
+
+            $(this).val('');
+        }
+
+        function removeTodo(event) {
+            var id = $(this).parent().attr('data-id');
+        
+            $.ajax({
+                method: 'DELETE',
+                url: '/todo/list/{{todo_list.id}}/item/'+id+'/',
+                data: {
+                    csrfmiddlewaretoken: '{{csrf_token}}'
+                },
+                headers: {
+                    'X-CSRFToken': '{{csrf_token}}'
+                },
+                success: function() { console.log('yay!'); },
+                error: function() { console.log('boo!'); }
+            });          
+        }
+
+        function editTodo(event) {
+            var $this = $(this);
+            var $list = $this.parent();
+            var id = $list.attr('data-id');
+            var title = $this.val();
+
+            if (title.length > 0) { 
+                $.ajax({
+                    method: 'POST',
+                    url: '/todo/list/{{todo_list.id}}/item/'+id+'/',
+                    data: {
+                        title: title,
+                        csrfmiddlewaretoken: '{{csrf_token}}'
+                    },
+                    headers: {
+                        'X-CSRFToken': '{{csrf_token}}'
+                    },
+                    success: function() { console.log('yay!'); },
+                    error: function() { console.log('boo!'); }
+                });
+
+                $this.val('');
+            }
+
+            $list.children().removeClass('hidden');
+            $list.find('.edit').addClass('hidden');
+            $list.removeClass('editing');
+        }
+
+        function showEditView(event) {
+            var $this = $(this);
+            var $list = $this.parent();
+            var currentTitle = $list.find('label').text();
+
+            $list.addClass('editing');
+            $list.children().addClass('hidden');
+            $list.find('.edit').removeClass('hidden').focus();
+        }
+
+        function toggleComplete(event) {
+            var id = $(this).parent().attr('data-id');
+            var isCompleted = $(this).is(':checked');
+
+            $.ajax({
+                method: 'POST',
+                url: '/todo/list/{{todo_list.id}}/item/'+id+'/',
+                data: {
+                    is_completed: isCompleted,
+                    csrfmiddlewaretoken: '{{csrf_token}}'
+                },
+                headers: {
+                    'X-CSRFToken': '{{csrf_token}}'
+                },
+                success: function() { console.log('yay!'); },
+                error: function() { console.log('boo!'); }
+            });
+        }
+
+        $(document).ready(function() {
+            $('#new-todo').on('change', createTodo);
+            $('.todo-item button.destroy').on('click', removeTodo);
+            $('.todo-item input.edit').on('change', editTodo);
+            $('.todo-item input.edit').on('focusout', editTodo);
+            $('.todo-item label').on('dblclick', showEditView);
+            $('.todo-item input.toggle').on('click', toggleComplete);
+
+            $('#addCollaborator').on('click', function(event) {
+                $('#addCollaboratorModal').toggleClass('hidden');
+            });
+
+            $('#addCollaboratorModal button').on('click', function(event) {
+                var $input = $(this).parent().find('input')
+                var username = $input.val();
+
+                if (username.length > 0) { 
+                    $.ajax({
+                        method: 'POST',
+                        url: '/todo/list/{{todo_list.id}}/',
+                        data: {
+                            collaborators: [username],
+                            csrfmiddlewaretoken: '{{csrf_token}}'
+                        },
+                        headers: {
+                            'X-CSRFToken': '{{csrf_token}}'
+                        },
+                        success: function(data) {
+                            console.log('yay!'); 
+                            console.log(data);
+                            $input.val('');
+                        },
+                        error: function() { console.log('boo!'); }
+                    });
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <section id="todoapp">
+        <header id="header">
+            <h1>{{todo_list.title}}</h1>
+            <input type="text" id="new-todo" placeholder="What needs to be done?" />
+        </header>
+
+        <section id="main">
+            <button id="addCollaborator"></button>
+            <ul id="todo-list">
+            {% for todo in todo_list.todos.all %}
+                <li id="todo-item-{{todo.id}}" data-id="{{todo.id}}" class="todo-item {% if todo.is_completed %} completed {% endif %}"}}>
+                    <input type="checkbox" {% if todo.is_completed %} checked {% endif %} class="toggle" />
+                    <label>{{todo.title}}</label><button class="destroy"></button>
+                    <input type="text" class="edit hidden" />
+                </li>
+            {% endfor %}
+            </ul>
+        </section>
+    </section>
+
+    <div id="addCollaboratorModal" class="hidden">
+        <label>Overwhelmed? Get a friend to help!</label>
+        <input type="input" /><button></button>
+    </div>
+
+    <footer id="info">
+        <p>Double-click to edit a todo</p>
+    </footer>
+</body>
+</html>

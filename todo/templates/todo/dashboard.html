@@ -1,0 +1,80 @@
+<html>
+<head>
+    <title>PythonPusher • Todo</title>
+    {% load staticfiles %}
+    <link rel="stylesheet" href="{% static 'todo/dashboard.css' %}">
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            $('#myTodos > *').each(function() {
+                var $this = $(this);
+                var rotateZ = Math.floor(11*Math.random()) - 5;
+                $this.css('transform', 'rotateZ('+ rotateZ + 'deg)');
+            })
+            $('#myTodos').removeClass('hidden');
+
+            $('#create-new-list').on('click', function(event) {
+                $('#createNewList').removeClass("hidden");
+            });
+
+            $('#createNewList #cancel').on('click', function(event) {
+                $('#createNewList').addClass("hidden");
+            });
+
+            $('#createNewList #submit').on('click', function(event) {
+                var title = $(this).parent().find('input').val();
+
+                $.ajax({
+                    method: 'POST',
+                    url: '/todo/list/',
+                    data: {
+                        title: title,
+                        csrfmiddlewaretoken: '{{csrf_token}}'
+                    },
+                    headers: {
+                        'X-CSRFToken': '{{csrf_token}}'
+                    },
+                    success: function(data) { 
+                        console.log(data);
+                        var html = ''
+                            + '<a class="todo-list" data-id="'+data.id+'" href="/todo/list/'+data.id+'/">'
+                                + '<h1>'+data.title+'</h1>'
+                            + '</a>';
+                        $('.todo-list').filter(':last').after(html);
+
+
+                    },
+                    error: function() { console.log('boo!'); }
+                });
+            });
+        });
+    </script>
+    <style>
+
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Welcome back, {{me.username}}</h1>
+    </header>
+    <section id="dashboard">
+        <div id="myTodos" class="hidden">
+        {% for todo_list in me.todolist_set.all %}
+            <a class="todo-list" data-id="{{todo_list.id}}" href="/todo/list/{{todo_list.id}}/">
+                <h1>{{todo_list.title}}</h1>
+            </a>
+        {% endfor %}
+            <div id="create-new-list">
+                <h1>+</h1>
+            </div>
+        </div>
+
+        <div id="createNewList" class="hidden">
+            <label>What do you want to do?</label>
+            <input type="text" />
+            <button id="cancel"></button>
+            <button id="submit"></button>
+        </div>
+    </section>
+</body>
+</html>
