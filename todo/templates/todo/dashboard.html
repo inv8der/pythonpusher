@@ -35,14 +35,11 @@
                         'X-CSRFToken': '{{csrf_token}}'
                     },
                     success: function(data) { 
-                        console.log(data);
                         var html = ''
                             + '<a class="todo-list" data-id="'+data.id+'" href="/todo/list/'+data.id+'/">'
                                 + '<h1>'+data.title+'</h1>'
                             + '</a>';
-                        $('.todo-list').filter(':last').after(html);
-
-
+                        $('#create-new-list').before(html);
                     },
                     error: function() { console.log('boo!'); }
                 });
